@@ -1,0 +1,229 @@
+# vim: set expandtab:
+#
+# strict by default, lightweight syntax for laziness like python
+# https://idris2.readthedocs.io/en/latest/tutorial/typesfuns.html#laziness
+# https://ocaml.org/api/Seq.html
+# TODO: decide whether to track effects in the types.
+# probably we want an algebraic effect system
+
+# maybe we should first prototype the semantics as a lisp, since s expressions are easy to parse?
+
+# type signatures, ints, bindings, single case lambda
+add : Int -> Int -> Int =
+  | a b -> a + b
+
+# parametric polymorphism, return type polymorphism, type variables
+# design decision: should we require explicit binding of type variables?
+id : a -> a =
+  | x -> x
+
+# user defined data types, infix data constructors (look into pattern synonyms?)
+# should look at how purescript, elm, ocaml handle this
+# design decisions: should we have row types? Should all product types be records, should we disallow "tuple structs?"
+# - it turns out efficient compilation of row types (ie without dynamism) is an open research problem or not possible
+#   - purescript and elm implement it on js objects
+#   - ocaml objects have limitations compared to true row polymorphism, and also make use of dynamism
+#
+# We want to solve the problem of partial record field accessors in haskell. Therefore, record accessors should be functions that take records of a given shape, which are anonymous. Look into HasField
+# the dowside of having all sum type variants take records, rather than having their own fields, is that we lose the benefits of constructors as curried functions
+# Maybe we could generate curried constructors as syntactic sugar for record creation.
+# eg the below definition could generate both
+Cons : { first : a, rest : List a } -> List a
+# and
+Cons' : a -> List a -> List a
+Cons' x xs = Cons { first = x, rest = xs }
+
+
+# Should the language be lazy?
+# Should sum types always contain either records or tuples?
+# should we use GADT syntax?
+
+# positional:
+data List a = Cons { a, List a } | Nil
+# labelled:
+data List a = Cons { first : a, rest : List a } | Nil
+
+# GADT style
+data List a where
+  Cons : { first : a, rest : List a } -> List a
+  Nil : List a
+
+# multi case lambda, lists, tail recursion
+addOneToEach : List Int -> List Int =
+  | [] -> []
+  | (x :: xs) -> x + 1 :: addOneToEach xs
+
+addOneToEach : List Int -> List Int =
+  | Nil -> Nil
+  # allow positional syntax? That would imply records are ordered. Maybe that's ok if we have something like hasField
+  | Cons {n, ns} -> Cons {n + 1, addOneToEach ns}
+
+head : List a -> Option a =
+  | [] -> None
+  | (x :: _) -> Some x
+
+map : (a -> b) -> List a -> List b =
+  | f []         -> []
+  | f (x :: xs) -> f x :: map f xs
+
+addOneToAll : List Int -> Int = |-> map it (x+1)
+
+filter : (a -> Bool) -> List a -> List a = 
+  | p [] -> []
+  | p (x :: xs)
+    if p x -> x :: filter p xs
+    else   ->      filter p xs
+
+# alternative syntax for if/guards
+filter : (a -> Bool) -> List a -> List a = 
+  | p [] -> []
+  | p (x :: xs)
+    ? p x  -> x :: filter p xs
+    ? else ->      filter p xs
+
+take : Int -> List a -> List a = 
+  | 0 _          -> []
+  | _ []         -> error "Index out of range"
+  | n _ if n < 0 -> error "Negative index"
+  | n (x :: xs)  -> x :: take (n - 1) xs
+
+takeWhile : (a -> Bool) -> List a -> List a =
+  | p []        -> []
+  | p (x :: xs)
+    if p x -> x :: takeWhile p xs
+    else   -> []
+
+takeWhile : (a -> Bool) -> List a -> List a =
+  | p []        -> []
+  | p (x :: xs)
+    ? p x  -> x :: takeWhile p xs
+    ? else -> []
+
+euler1 : Int -> Int = do
+  divides : Int -> Int -> Bool =
+    | a b -> b % a == 0
+  | n -> (1..n) 
+    |> filter (| m -> 3 `divides` m || 5 `divides` m) 
+    |> sum
+
+euler1Imperative : Int -> Int = do
+  divides = | a b -> b % a == 0
+  keep = | i -> 3 `divides` i || 5 `divides` i 
+  | n -> do
+    mut total := 0
+    for i in (0..n) do
+      if keep i -> total += i
+    sum
+
+# todo is a type hole that does not prevent compilation, unless wError. It crashes at runtime
+fibsImperative : Int -> Stream Int =
+| n -> do
+  mut (a, b) := (1, 1)
+  while b < n do
+    yield b
+    (a, b) := (b, a+b)
+
+
+euler2 : Int -> Int =
+| n -> do todo
+
+# batteries included: random
+
+guessingGame : IO () = loop do
+  # ! means "perform IO action". Its scope extends as far to the right as possible
+  target = !randRange 1 100
+
+  prompt : IO String = | prompt -> do
+    !printWithoutNewline prompt
+    !getLine
+
+  # until : (a -> Bool) -> IO a -> IO a
+  getGuess : IO Int = until isSome do
+    guess = !(prompt "guess a number! >") |> readInt
+    # | ... is short for | _ -> (), ie, ignore other patterns and return ()
+    guess |> | None -> !print "That's not an integer!"
+             | ...
+    guess
+  
+  # result is not a mutable variable, it is an immutable binding
+  # it is not accessible outside the scope of its do block, so
+  # its value does not persist from one iteration to the next
+  # if you want a mutable variable that persists between iterations,
+  # you need to declare it before the scope of the loop
+  until (==EQ) do
+    result = !getGuess |> compare target
+    !result
+      |> | LT -> "Lower"
+         | EQ -> "You got it!"
+         | GT -> "Higher"
+      |> print
+    result
+
+
+until : (a -> Bool) -> IO a -> IO a =
+  | p loopBody -> do
+    # the control keyword allows loopBody to break out of the until loop
+    # by providing a value of the same type as the result of until
+    result = !control loopBody
+    if (not <| p result) -> until p act
+    else -> result
+
+betaReduce : Expr -> Variable -> Expr -> Expr = 
+  | arg paramVar body -> do
+    go = betaReduce arg paramVar
+    body |> 
+      | abstr@(Abstraction innerParamVar innerBody)
+        # The inner abstraction shadows the argument we are substituting,
+        # so we should not continue substituting in its body
+        if paramVar == innerParamVar -> abstr
+        else -> Abstraction innerParamVar (go innerBody)
+      | Var v
+        if paramVar == v -> arg
+        else -> Var v
+      | Application fn innerArg -> Application (go fn) (go innerArg)
+
+
+# struct Point {
+#   int x;
+#   int y;
+# };
+# 
+# int myFunc(const std::vector<Point>& myPoints) {
+#   int result = 0;
+#   for (const auto& point : myPoints) {
+#     if (result % 2 == 0) {
+#       result += point.x;
+#     } else {
+#       result += point.y
+#     }
+#   }
+#   return result;
+# }
+
+myFunc : List Point -> Int =
+  | points -> foldl points 0 | acc point
+      if 2 `divides` acc -> acc + point.x
+      else -> acc + point.y
+
+sum : List Int -> Int = 
+  | l -> foldl l 0 (+)
+
+prettyTableStoryTags : [Story] -> String =
+  formatStory = | story -> f"{story.title:>30} | {', '.join(story.tags)}"
+  map formatStory .> unlines
+
+main : IO () =
+  loop =
+    | 3 -> 
+      print "That's three sixes in a row!"
+    | n -> 
+      roll = input "What did you roll?" |> read
+      roll |> | Some 6 -> loop (n+1)
+              | Some r -> loop 0
+              | None ->
+                print "That's not a number!"
+                loop 0
+  loop 0
+
+
+
