@@ -7,6 +7,8 @@ import Text.Megaparsec
 import Expr
 import Parse
 import Eval
+import qualified Data.Text.IO as T
+import Control.Monad.IO.Class (liftIO)
 
 main :: IO ()
 main = hspec do
@@ -15,9 +17,21 @@ main = hspec do
   testApplications
   testInfixes
   testParseExpr
+  testBinding
   testEval
+  testTestPrograms
 
-testNumLit = do
+testBinding = describe "binding" do
+  it "parses x = 1" do
+    parseMaybe binding "x = 1" `shouldBe` Just (Var "X", LitInt 1)
+
+testTestPrograms = describe "test programs" do
+  it "executes test1.lang correctly" do
+    contents <- liftIO $ T.readFile "test_programs/test1.lang"
+    let result = runProgram <$> parse bindings "test1.lang" contents
+    result `shouldBe` Right (Right $ VI 2)
+
+testNumLit = describe "numLit" do
   it "parses 1" do
     parseMaybe numLit "1" `shouldBe` Just 1
 

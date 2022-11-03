@@ -11,9 +11,9 @@ import Data.Text qualified as T
 
 import Expr
 
-type Env = [(Var, Expr)]
+type Env = [Binding]
 
-data RuntimeError = UndefinedVariable Var | TypeError Text
+data RuntimeError = UndefinedVariable Var | TypeError Text | MainNotFound
   deriving (Show, Eq)
 
 liftEval :: (Value -> Value -> Either RuntimeError Value) -> Expr -> Expr -> Eval Value
@@ -22,6 +22,11 @@ liftEval op e1 e2 =
 
 data Value = VL Var Expr | VI Int
   deriving (Show, Eq)
+
+runProgram :: Env -> Either RuntimeError Value
+runProgram env = case lookup (Var "main") env of
+  Just e -> runReaderT (eval e) env
+  Nothing -> Left MainNotFound
 
 -- >>> eval . unsafeParseExpr $ "1 + 1"
 -- 2

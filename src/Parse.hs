@@ -3,6 +3,7 @@ module Parse where
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.IO qualified as T
 import Data.Void (Void)
 import Expr
 import Text.Megaparsec
@@ -23,10 +24,12 @@ parseExpr = parseMaybe expr
 unsafeParseExpr :: Text -> Expr
 unsafeParseExpr = fromJust . parseExpr
 
--- seems to be a problem with parsing spaces after variables
+variable :: Parser Var 
 variable = Var <$> do
   -- todo allow underscores, think deeply about allowed characters
-  T.pack <$> some lowerChar
+  c <- lowerChar
+  cs <- some alphaNumChar
+  pure $ T.pack (c:cs)
 
 parens :: Parser a -> Parser a
 parens = between (tok $ char '(') (char ')')
@@ -77,9 +80,23 @@ stringTok = tok . string
 
 lam :: Parser Expr
 lam = do
-  charTok '|'
+  _ <- charTok '|'
   v <- tok variable
-  stringTok "->"
+  _ <- stringTok "->"
   e <- expr
   pure $ Lam v e
 
+binding :: Parser Binding
+binding = do
+  v <- tok variable
+  charTok '='
+  e <- expr
+  newline
+  pure (v, e)
+
+bindings :: Parser [Binding]
+bindings = sepBy binding (many newline)
+
+parseTestFile :: Show a => FilePath -> Parser a -> IO ()
+parseTestFile f p = parseTest p =<< T.readFile f
+  
