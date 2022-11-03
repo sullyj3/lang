@@ -26,10 +26,11 @@ unsafeParseExpr = fromJust . parseExpr
 
 variable :: Parser Var 
 variable = Var <$> do
-  -- todo allow underscores, think deeply about allowed characters
-  c <- lowerChar
-  cs <- some alphaNumChar
-  pure $ T.pack (c:cs)
+  T.pack <$> some lowerChar
+  -- -- todo allow underscores, think deeply about allowed characters
+  -- c <- lowerChar
+  -- cs <- some alphaNumChar
+  -- pure $ T.pack (c:cs)
 
 parens :: Parser a -> Parser a
 parens = between (tok $ char '(') (char ')')
