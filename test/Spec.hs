@@ -9,6 +9,7 @@ import Parse
 import Eval
 import qualified Data.Text.IO as T
 import Control.Monad.IO.Class (liftIO)
+import Data.Data (dataTypeConstrs)
 
 main :: IO ()
 main = hspec do
@@ -18,8 +19,11 @@ main = hspec do
   testInfixes
   testParseExpr
   testBinding
+  testBindings
   testEval
   testTestPrograms
+
+langAddone = Lam "x" $ Plus (V "x") (LitInt 1)
 
 testBinding = describe "binding" do
   it "parses x = 1" do
@@ -31,8 +35,19 @@ testBinding = describe "binding" do
       Just (Var "id", langId)
 
   it "parses addone" do
-    let langAddone = Lam "x" $ Plus (V "x") (LitInt 1)
-    parseMaybe binding "| x ->x+1" `shouldBe` Just ("addone", langAddone)
+    parseMaybe binding "addone = |x->x+1" `shouldBe` Just ("addone", langAddone)
+
+  it "parses addone with some more spaces" do
+    parseMaybe binding "addone = | x -> x + 1" `shouldBe` Just ("addone", langAddone)
+
+testBindings = describe "bindings" do
+  it "parses some bindings" do
+    parseMaybe bindings "addone = | x -> x + 1\nmain=addone 1" `shouldBe`
+      Just
+        [ ("addone", langAddone)
+        , ("main", App (V "addone") (LitInt 1))]
+
+
 
 testTestPrograms = describe "test programs" do
   it "executes test1.lang correctly" do
