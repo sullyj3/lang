@@ -12,6 +12,7 @@ import Text.Megaparsec.Char.Lexer qualified as L
 import Data.Maybe (fromJust)
 
 import Expr
+import Control.Monad (void)
 
 type Parser = Parsec Void Text
 
@@ -92,7 +93,7 @@ binding = do
   v <- tok variable
   charTok '='
   e <- expr
-  newline
+  void newline <|> eof
   pure (v, e)
 
 bindings :: Parser [Binding]

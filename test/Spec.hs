@@ -23,7 +23,16 @@ main = hspec do
 
 testBinding = describe "binding" do
   it "parses x = 1" do
-    parseMaybe binding "x = 1" `shouldBe` Just (Var "X", LitInt 1)
+    parseMaybe binding "x = 1" `shouldBe` Just (Var "x", LitInt 1)
+
+  it "parses id = | x -> x" do
+    let langId = Lam "x" (V "x")
+    parseMaybe binding "id = | x -> x" `shouldBe` 
+      Just (Var "id", langId)
+
+  it "parses addone" do
+    let langAddone = Lam "x" $ Plus (V "x") (LitInt 1)
+    parseMaybe binding "| x ->x+1" `shouldBe` Just ("addone", langAddone)
 
 testTestPrograms = describe "test programs" do
   it "executes test1.lang correctly" do
