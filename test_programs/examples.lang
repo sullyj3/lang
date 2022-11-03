@@ -33,10 +33,30 @@ Cons : { first : a, rest : List a } -> List a
 Cons' : a -> List a -> List a
 Cons' x xs = Cons { first = x, rest = xs }
 
+# idea for replacing default arguments: namespaced subfunctions.
+sort = {
+  default : List a -> List a = sort::withKey id
+  withKey : (a -> a -> Ordering) -> List a -> List a = 
+}
+
+# used like
+ys = sort xs # same as sort::default xs
+zs = sort::withKey Down xs
+
+zip {
+  default : List a -> List b -> List (a, b) = zip::with (,)
+
+  with : (a -> b -> c) -> List a -> List b -> List c =
+    ...
+}
+
 
 # Should the language be lazy?
 # Should sum types always contain either records or tuples?
 # should we use GADT syntax?
+
+# can we unify lists and iterators?
+# should [] be used for lists or arrays? Maybe a typeclass of iterators?
 
 # positional:
 data List a = Cons { a, List a } | Nil
@@ -114,6 +134,43 @@ euler1Imperative : Int -> Int = do
     for i in (0..n) do
       if keep i -> total += i
     sum
+
+fizzBuzz : Int -> IO () = | n ->
+  fizzBuzzify : Int -> String = | i -> (3 `divides` i, 5 `divides` i) |>
+    | (true, true) -> "FizzBuzz"
+    | (true, false) -> "Fizz"
+    | (false, true) -> "Buzz"
+    | _ -> show i
+  map fizzBuzzify (0..n) |> each printLn
+
+fizzBuzz : Int -> IO () =
+  fizzBuzzify = | i -> (i % 3, i % 5) |>
+    | (0, 0) -> "FizzBuzz"
+    | (0, _) -> "Fizz"
+    | (_, 0) -> "Buzz"
+    | _ -> show i
+  range .> map fizzBuzzify .> each printLn
+  # | n -> map fizzBuzzify (0..n) |> each printLn
+
+fizzBuzz : Int -> IO () =
+  range 
+  .> map (| i -> (i % 3, i % 5) |>
+    | (0, 0) -> "FizzBuzz"
+    | (0, _) -> "Fizz"
+    | (_, 0) -> "Buzz"
+    | _ -> show i
+  )
+  .> each printLn
+
+# brace based syntax?
+  .> map { i -> (i % 3, i % 5) |>
+    { (0, 0) -> "FizzBuzz"
+    | (0, _) -> "Fizz"
+    | (_, 0) -> "Buzz"
+    | _ -> show i
+    }
+  }
+  
 
 # todo is a type hole that does not prevent compilation, unless wError. It crashes at runtime
 fibsImperative : Int -> Stream Int =
