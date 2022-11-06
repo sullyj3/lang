@@ -17,7 +17,7 @@ import Control.Monad (void)
 type Parser = Parsec Void Text
 
 tok :: Parser a -> Parser a
-tok p = p <* space
+tok p = p <* hspace
 
 parseExpr :: Text -> Maybe Expr
 parseExpr = parseMaybe expr
@@ -48,12 +48,12 @@ numLit = L.decimal
 
 plus :: Parser (Expr -> Expr -> Expr)
 plus = do 
-  space
+  hspace
   charTok '+'
   pure Plus
 
 app :: Parser (Expr -> Expr -> Expr)
-app = App <$ space1
+app = App <$ hspace1
 
 chainl :: Parser a -> Parser (a->a->a) -> Parser a
 chainl p op = p >>= rest
