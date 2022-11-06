@@ -10,15 +10,12 @@ import Data.Text (Text)
 import Data.Text qualified as T
 
 import Expr
+-- import Debug.Trace (traceM, trace)
 
 type Env = [Binding]
 
 data RuntimeError = UndefinedVariable Var | TypeError Text | MainNotFound
   deriving (Show, Eq)
-
-liftEval :: (Value -> Value -> Either RuntimeError Value) -> Expr -> Expr -> Eval Value
-liftEval op e1 e2 =
-  joinError $ (liftA2 op `on` eval) e1 e2
 
 data Value = VL Var Expr | VI Int
   deriving (Show, Eq)
@@ -31,20 +28,49 @@ runProgram env = case lookup (Var "main") env of
 -- >>> eval . unsafeParseExpr $ "1 + 1"
 -- 2
 eval :: Expr -> Eval Value
-eval = \case
+eval e = do
+  -- env <- ask
+  -- traceM ("eval: env is " <> show env)
+  -- traceM ("evaluating " <> show e)
+  e' <- betaReduce e
+  case e' of
+    V v -> runtimeError $ UndefinedVariable v
+    LitInt i -> pure $ VI i
+    Plus a b -> liftEval valuePlus a b
+    Lam v lamBody -> pure $ VL v lamBody
+    App e1 e2 -> do
+      fn <- eval e1
+      case fn of
+        VL v lamBody -> local ((v, e2) :) $ eval lamBody
+        _ -> runtimeError $ TypeError $ "Cannot apply " <> tShow fn <> " to " <> tShow e2
+  where 
+    liftEval :: (Value -> Value -> Either RuntimeError Value) 
+             -> (Expr  -> Expr  -> Eval Value)
+    liftEval op e1 e2 =
+      joinError $ (liftA2 op `on` eval) e1 e2
+
+
+-- counterexample:
+-- (|x -> |y -> x + y) 1 2
+-- Lam (Var "x") (Lam (Var "y") (Plus (V (Var "x")) (V (Var "y"))))
+
+-- substitutes using current env
+betaReduce :: Expr -> Eval Expr
+betaReduce = \case
+  Plus e1 e2 -> liftA2 Plus (betaReduce e1) (betaReduce e2)
+  -- while beta reducing inside the body of a function, clear any existing 
+  -- bindings of the variable v, to ensure proper shadowing
+  Lam v e -> local (filter $ (v /=) . fst) do
+    e' <- betaReduce e
+    pure $ Lam v e'
+  -- base case - perform the substitution
   V v -> do
     env <- ask
-    maybe (runtimeError $ UndefinedVariable v)
-          eval
-          (lookup v env)
-  LitInt i -> pure $ VI i
-  Plus a b -> liftEval valuePlus a b
-  Lam v e -> pure $ VL v e
-  App e1 e2 -> do
-    r1 <- eval e1
-    case r1 of
-      VL v e -> local ((v, e2) :) $ eval e
-      _ -> runtimeError $ TypeError $ "Cannot apply " <> tShow r1 <> " to " <> tShow e2
+    case lookup v env of
+      Just vVal -> pure vVal
+      Nothing -> pure $ V v
+  App e1 e2 -> liftA2 App (betaReduce e1) (betaReduce e2)
+  e -> pure e
 
 tShow :: Show a => a -> Text
 tShow = T.pack . show
