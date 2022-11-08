@@ -47,10 +47,14 @@ numLit :: Parser Int
 numLit = L.decimal
 
 plus :: Parser (Expr -> Expr -> Expr)
-plus = do 
-  hspace
-  charTok '+'
-  pure Plus
+plus = binop "+" (Binop Plus)
+
+minus :: Parser (Expr -> Expr -> Expr)
+minus = binop "-" (Binop Minus)
+
+binop :: Text -> (Expr -> Expr -> Expr) -> Parser (Expr -> Expr -> Expr)
+binop c combine = combine <$ 
+  (hspace *> stringTok c)
 
 app :: Parser (Expr -> Expr -> Expr)
 app = App <$ hspace1
@@ -68,7 +72,7 @@ applications :: Parser Expr
 applications = chainl term app
 
 infixes :: Parser Expr
-infixes = chainl applications plus
+infixes = chainl applications (try plus <|> minus)
 
 expr :: Parser Expr
 expr = try lam <|> infixes

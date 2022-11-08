@@ -8,6 +8,9 @@ type Binding = (Var, Expr)
 newtype Var = Var Text
   deriving (Show, Eq, IsString)
 
-data Expr = Plus Expr Expr | LitInt Int | Lam Var Expr | V Var | App Expr Expr
+data BinopType = Plus | Minus
+  deriving (Show, Eq)
+
+data Expr = Binop BinopType Expr Expr | LitInt Int | Lam Var Expr | V Var | App Expr Expr
   deriving (Show, Eq)
 

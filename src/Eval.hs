@@ -12,6 +12,7 @@ import Data.Text qualified as T
 import Expr
 -- import Debug.Trace (traceM, trace)
 
+-- TODO use Data.Map
 type Env = [Binding]
 
 data RuntimeError = UndefinedVariable Var | TypeError Text | MainNotFound
@@ -32,11 +33,13 @@ eval e = do
   -- env <- ask
   -- traceM ("eval: env is " <> show env)
   -- traceM ("evaluating " <> show e)
+  -- TODO this is extremely inefficient
   e' <- betaReduce e
   case e' of
     V v -> runtimeError $ UndefinedVariable v
     LitInt i -> pure $ VI i
-    Plus a b -> liftEval valuePlus a b
+    Binop Plus a b -> liftEval valuePlus a b
+    Binop Minus a b -> liftEval valueMinus a b
     Lam v lamBody -> pure $ VL v lamBody
     App e1 e2 -> do
       fn <- eval e1
@@ -57,7 +60,7 @@ eval e = do
 -- substitutes using current env
 betaReduce :: Expr -> Eval Expr
 betaReduce = \case
-  Plus e1 e2 -> liftA2 Plus (betaReduce e1) (betaReduce e2)
+  Binop op e1 e2 -> liftA2 (Binop op) (betaReduce e1) (betaReduce e2)
   -- while beta reducing inside the body of a function, clear any existing 
   -- bindings of the variable v, to ensure proper shadowing
   Lam v e -> local (filter $ (v /=) . fst) do
@@ -77,7 +80,11 @@ tShow = T.pack . show
 
 valuePlus :: (Value -> Value -> Either RuntimeError Value)
 valuePlus (VI a) (VI b) = Right $ VI $ a + b
-valuePlus a b = Left . TypeError $ "cannot add " <> (tShow a) <> " and " <> (tShow b) 
+valuePlus a b = Left . TypeError $ "cannot add " <> tShow a <> " and " <> tShow b 
+
+valueMinus :: (Value -> Value -> Either RuntimeError Value)
+valueMinus (VI a) (VI b) = Right $ VI $ a - b
+valueMinus a b = Left . TypeError $ "cannot subtract " <> tShow a <> " and " <> tShow b 
 
 runtimeError :: RuntimeError -> Eval a
 runtimeError = lift . Left

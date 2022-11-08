@@ -23,7 +23,7 @@ main = hspec do
   testEval
   testTestPrograms
 
-langAddone = Lam "x" $ Plus (V "x") (LitInt 1)
+langAddone = Lam "x" $ Binop Plus (V "x") (LitInt 1)
 
 testBinding = describe "binding" do
   it "parses x = 1" do
@@ -64,13 +64,13 @@ testPlus = describe "plus" do
     let f = parseMaybe plus "+"
 
     (\f -> f (LitInt 1) (LitInt 1)) <$> f
-      `shouldBe` Just (Plus (LitInt 1) (LitInt 1))
+      `shouldBe` Just (Binop Plus (LitInt 1) (LitInt 1))
 
   it "parses + followed by spaces" do
     let f = parseMaybe plus "+  "
 
     (\f -> f (LitInt 1) (LitInt 1)) <$> f
-      `shouldBe` Just (Plus (LitInt 1) (LitInt 1))
+      `shouldBe` Just (Binop Plus (LitInt 1) (LitInt 1))
 
   it "parses x + 1" do
     parse (do variable
@@ -83,57 +83,57 @@ testApplications = describe "applications" do
     
 testInfixes = describe "infixes" do
   it "parses 1 + 1"  do
-    parse infixes "test" "1 + 1" `shouldBe` Right (Plus (LitInt 1) (LitInt 1))
+    parse infixes "test" "1 + 1" `shouldBe` Right (Binop Plus (LitInt 1) (LitInt 1))
 
 testParseExpr = describe "parseExpr" do
   it "fails to parse 1 +" do
     parseExpr "1 +" `shouldBe` Nothing
 
   it "parses 1 + 1" do
-    parseExpr "1 + 1" `shouldBe` Just (Plus (LitInt 1) (LitInt 1))
+    parseExpr "1 + 1" `shouldBe` Just (Binop Plus (LitInt 1) (LitInt 1))
 
   it "parses 1 + 2" do
-    parseExpr "1 + 2" `shouldBe` Just (Plus (LitInt 1) (LitInt 2))
+    parseExpr "1 + 2" `shouldBe` Just (Binop Plus (LitInt 1) (LitInt 2))
 
   it "parses 1 + x" do
-    parseExpr "1 + x" `shouldBe` Just (Plus (LitInt 1) (V $ Var "x"))
+    parseExpr "1 + x" `shouldBe` Just (Binop Plus (LitInt 1) (V $ Var "x"))
 
   it "parses x+1" do
-    parseExpr "x+1" `shouldBe` Just (Plus (V $ Var "x") (LitInt 1))
+    parseExpr "x+1" `shouldBe` Just (Binop Plus (V $ Var "x") (LitInt 1))
 
   it "parses x+ 1" do
-    parseExpr "x+ 1" `shouldBe` Just (Plus (V $ Var "x") (LitInt 1))
+    parseExpr "x+ 1" `shouldBe` Just (Binop Plus (V $ Var "x") (LitInt 1))
 
   it "parses x +1" do
-    parseExpr "x +1" `shouldBe` Just (Plus (V $ Var "x") (LitInt 1))
+    parseExpr "x +1" `shouldBe` Just (Binop Plus (V $ Var "x") (LitInt 1))
 
   it "parses x + 1" do
-    parseExpr "x + 1" `shouldBe` Just (Plus (V $ Var "x") (LitInt 1))
+    parseExpr "x + 1" `shouldBe` Just (Binop Plus (V $ Var "x") (LitInt 1))
 
   it "parses x + y" do
-    parseExpr "x + y" `shouldBe` Just (Plus (V $ Var "x") (V $ Var "y"))
+    parseExpr "x + y" `shouldBe` Just (Binop Plus (V $ Var "x") (V $ Var "y"))
 
   it "parses |x->x+1" do
-    parseExpr "|x->x+1" `shouldBe` Just (Lam (Var "x") (Plus (V $ Var "x") (LitInt 1)))
+    parseExpr "|x->x+1" `shouldBe` Just (Lam (Var "x") (Binop Plus (V $ Var "x") (LitInt 1)))
 
   it "parses | x -> x+1" do
-    parseExpr "| x -> x+1" `shouldBe` Just (Lam (Var "x") (Plus (V $ Var "x") (LitInt 1)))
+    parseExpr "| x -> x+1" `shouldBe` Just (Lam (Var "x") (Binop Plus (V $ Var "x") (LitInt 1)))
 
   it "parses | x -> x + 1" do
-    parseExpr "| x -> x + 1" `shouldBe` Just (Lam (Var "x") (Plus (V $ Var "x") (LitInt 1)))
+    parseExpr "| x -> x + 1" `shouldBe` Just (Lam (Var "x") (Binop Plus (V $ Var "x") (LitInt 1)))
 
   it "parses (|x->x+1)" do
-    parseExpr "(|x->x+1)" `shouldBe` Just (Lam (Var "x") (Plus (V $ Var "x") (LitInt 1)))
+    parseExpr "(|x->x+1)" `shouldBe` Just (Lam (Var "x") (Binop Plus (V $ Var "x") (LitInt 1)))
 
   it "parses ( | x -> x + 1 )" do
-    parseExpr "( | x -> x + 1 )" `shouldBe` Just (Lam (Var "x") (Plus (V $ Var "x") (LitInt 1)))
+    parseExpr "( | x -> x + 1 )" `shouldBe` Just (Lam (Var "x") (Binop Plus (V $ Var "x") (LitInt 1)))
 
   it "parses 1 2" do
     parse expr "test" "1 2" `shouldBe` Right (App (LitInt 1) (LitInt 2))
 
   it "parses (| x -> x + 1) 1" do
     parseExpr "(| x -> x + 1) 1" `shouldBe` Just ( 
-      App (Lam (Var "x") (Plus (V $ Var "x") (LitInt 1) ))
+      App (Lam (Var "x") (Binop Plus (V $ Var "x") (LitInt 1) ))
           (LitInt 1))
 
 
@@ -153,3 +153,6 @@ testEval = describe "eval" do
 
   it "gives a runtime error for unknown variable" do
     parseEval "x 1" `shouldBe` Just (Left $ UndefinedVariable (Var "x"))
+
+  it "evaluates 1-1" do
+    parseEval "1-1" `shouldBe` Just (Right $ VI 0)
