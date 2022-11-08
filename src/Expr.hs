@@ -11,6 +11,11 @@ newtype Var = Var Text
 data BinopType = Plus | Minus
   deriving (Show, Eq)
 
-data Expr = Binop BinopType Expr Expr | LitInt Int | Lam Var Expr | V Var | App Expr Expr
+data Expr = Binop BinopType Expr Expr 
+          | LitString Text
+          | LitInt Int 
+          | Lam Var Expr 
+          | V Var 
+          | App Expr Expr
   deriving (Show, Eq)
 

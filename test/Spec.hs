@@ -156,3 +156,6 @@ testEval = describe "eval" do
 
   it "evaluates 1-1" do
     parseEval "1-1" `shouldBe` Just (Right $ VI 0)
+
+  it "evaluates (|x -> x) \"hello, world\"" do
+    parseEval "(|x -> x) \"hello, world\"" `shouldBe` Just (Right $ VStr "hello, world")

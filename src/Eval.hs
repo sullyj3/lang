@@ -18,7 +18,7 @@ type Env = [Binding]
 data RuntimeError = UndefinedVariable Var | TypeError Text | MainNotFound
   deriving (Show, Eq)
 
-data Value = VL Var Expr | VI Int
+data Value = VL Var Expr | VI Int | VStr Text
   deriving (Show, Eq)
 
 runProgram :: Env -> Either RuntimeError Value
@@ -37,6 +37,7 @@ eval e = do
   e' <- betaReduce e
   case e' of
     V v -> runtimeError $ UndefinedVariable v
+    LitString s -> pure $ VStr s
     LitInt i -> pure $ VI i
     Binop Plus a b -> liftEval valuePlus a b
     Binop Minus a b -> liftEval valueMinus a b

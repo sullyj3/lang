@@ -41,10 +41,14 @@ term =
   try (parens (tok expr)) <|>
   try (V <$> variable) <|>
   -- TODO think about numeric literal format
-  try (LitInt <$> L.decimal)
+  try (LitInt <$> numLit) <|>
+  try (LitString <$> strLit)
 
 numLit :: Parser Int
 numLit = L.decimal
+
+strLit :: Parser Text
+strLit = between (char '"') (char '"') (T.pack <$> many (satisfy ('"' /=)))
 
 plus :: Parser (Expr -> Expr -> Expr)
 plus = binop "+" (Binop Plus)
