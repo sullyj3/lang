@@ -27,6 +27,7 @@ library
   exposed-modules:
       Eval
       Expr
+      Interpret
       Parse
       Repl
   other-modules:

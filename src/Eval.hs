@@ -1,19 +1,22 @@
-module Eval where
+module Eval (
+  runProgram,
+  evalIt,
+  Value(..),
+  RuntimeError(..)
+) where
 
 import Data.Function (on)
-import Control.Monad
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.Class (lift)
-import Control.Monad.Error
 import Control.Applicative
 
 import Data.Text (Text)
 import Data.Text qualified as T
 
 import Data.Map (Map)
-import Data.Map qualified as Map
 
 import Expr
+import Control.Monad.Except (MonadError(..))
 -- import Debug.Trace (traceM, trace)
 
 -- TODO use Data.Map
