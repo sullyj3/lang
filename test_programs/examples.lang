@@ -34,17 +34,22 @@ Cons' : a -> List a -> List a
 Cons' x xs = Cons { first = x, rest = xs }
 
 # idea for replacing default arguments: namespaced subfunctions.
+# 
+# This is just modules! Maybe what I want is a culture of using modules for small differences in functions
+#
+# But the difference is that you can call a "module", which invoke the default function
 sort = {
-  default : List a -> List a = sort::withKey id
-  withKey : (a -> a -> Ordering) -> List a -> List a = 
+  default : List a -> List a = sort.by compare
+  by : (a -> a -> Ordering) -> List a -> List a = 
+  on : Ord b => (a -> b) -> List a -> List a = 
 }
 
 # used like
-ys = sort xs # same as sort::default xs
-zs = sort::withKey Down xs
+ys = sort xs # same as sort.default xs
+zs = sort.on Down xs
 
 zip {
-  default : List a -> List b -> List (a, b) = zip::with (,)
+  default : List a -> List b -> List (a, b) = zip,with (,)
 
   with : (a -> b -> c) -> List a -> List b -> List c =
     ...
