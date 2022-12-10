@@ -1,4 +1,5 @@
 module Eval (
+  Env,
   runProgram,
   evalIt,
   Value(..),
@@ -25,7 +26,10 @@ type Env = [Binding]
 data RuntimeError = UndefinedVariable Var | DynTypeError Text | MainNotFound
   deriving (Show, Eq)
 
-data Value = VL Var Expr | VI Int | VStr Text
+data Value = VL Var Expr
+           | VI Int
+           | VStr Text
+           -- TODO add unit
   deriving (Show, Eq)
 
 runProgram :: Env -> Either RuntimeError Value
